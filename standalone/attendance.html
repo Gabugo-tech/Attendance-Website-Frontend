@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>COOU Smart Facial Recognition Attendance Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Load vladmandic premium face-api.js bundle compiled for web browsers -->
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen selection:bg-amber-500 selection:text-slate-950">
+
+  <!-- Header Banner -->
+  <header class="border-b border-blue-900/40 bg-slate-900/60 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-9 w-9 rounded-lg bg-amber-500 text-slate-900 flex items-center justify-center font-bold text-lg select-none">
+          C
+        </div>
+        <div>
+          <h1 class="text-xs font-black uppercase tracking-widest text-amber-500">COOU Admin Portal</h1>
+          <p class="text-[10px] text-slate-400 font-mono-code leading-none">Biometric Lens Module v3.2</p>
+        </div>
+      </div>
+      
+      <!-- Authentication user badge -->
+      <div id="auth-status-container" class="flex items-center space-x-2">
+        <span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse" id="auth-indicator"></span>
+        <span class="text-[10px] font-mono-code text-slate-400 uppercase tracking-wider" id="auth-username">Authenticating...</span>
+        <button id="auth-button" class="hidden text-[10px] bg-blue-900 hover:bg-blue-800 text-white font-extrabold uppercase px-3 py-1.5 rounded transition">
+          Sign In
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+    
+    <!-- LEFT SIDE: ACTIVE TERMINAL SETTINGS -->
+    <div class="lg:col-span-4 space-y-6">
+      <div class="bg-slate-900/40 border border-slate-900 rounded-xl p-5 space-y-4">
+        <div>
+          <h2 class="text-xs font-black uppercase text-slate-400 tracking-wider">Session Calibration</h2>
+          <p class="text-[11px] text-slate-400 mt-1">Configure target active course/session registry before starting biometric scanner.</p>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Target Academic Course</label>
+            <select id="course-select" class="w-full bg-slate-950 border border-blue-900/30 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-amber-500">
+              <option value="">Fetching courses...</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">Active Class Session</label>
+            <select id="session-select" class="w-full bg-slate-950 border border-blue-900/30 rounded-lg py-2.5 px-3 text-xs text-white focus:outline-none focus:border-amber-500">
+              <option value="">Choose Course First</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800/60 text-center">
+          <span class="inline-flex items-center space-x-1.5 text-[10px] font-mono-code bg-blue-950/40 border border-blue-900/20 px-3 py-1.5 rounded text-blue-300">
+            <span>Server Endpoint:</span>
+            <strong class="text-amber-400 font-bold uppercase">SECURE CLOUD FUNCTION</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Biometric Logs Side-Viewer -->
+      <div class="bg-slate-900/40 border border-slate-900 rounded-xl p-5">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800/60">
+          <h3 class="text-xs font-black uppercase text-slate-400 tracking-wider">Attendance Activity Log</h3>
+          <span class="text-[9px] font-mono-code bg-slate-950 border border-blue-900/40 text-blue-300 px-2 py-0.5 rounded" id="today-logs-count">0 Records</span>
+        </div>
+
+        <div class="mt-4 space-y-2 max-h-[220px] overflow-y-auto pr-1" id="attendance-activity-logs">
+          <div class="text-center py-8 text-[11px] text-slate-500 font-medium">
+            Biometric results will slide in stream here.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT SIDE: BIO CAMERA & SCANNER INTERACTION -->
+    <div class="lg:col-span-8 space-y-6">
+      
+      <!-- MAIN LENS WRAPPER -->
+      <div class="bg-slate-900/20 border border-slate-900 rounded-2xl p-6 flex flex-col items-center relative overflow-hidden">
+        
+        <!-- Interactive Overlay HUD -->
+        <div class="w-full flex items-center justify-between mb-4 z-10">
+          <div class="flex items-center space-x-2">
+            <span class="relative flex h-2 w-2 shrink-0">
+              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75"></span>
+              <span id="scan-hud-dot" class="relative inline-flex h-2 w-2 rounded-full bg-red-500"></span>
+            </span>
+            <span class="text-[10px] font-mono-code text-slate-300 uppercase tracking-widest font-bold" id="lens-hud-status">LENS INACTIVE</span>
+          </div>
+
+          <!-- Liveness eye blink checklist -->
+          <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-1 bg-slate-950 border border-blue-900/20 px-2 py-1 rounded" id="liveness-blink-badge">
+              <span class="text-[9px] font-mono-code font-extrabold uppercase text-slate-450" id="liveness-status-text">LIVENESS CHECKS</span>
+              <span class="h-2 w-2 rounded-full bg-slate-800 shrink-0" id="liveness-dot"></span>
+            </div>
+            
+            <div class="text-[10px] font-mono-code text-amber-500 select-none bg-amber-500/10 border border-amber-500/20 px-2 py-1 rounded hidden" id="blink-detected-alert">
+              BLINK DETECTED!
+            </div>
+          </div>
+        </div>
+
+        <!-- Camera Viewport Box -->
+        <div class="relative rounded-2xl border border-blue-900/20 bg-slate-950 aspect-video w-full max-w-xl mx-auto flex items-center justify-center overflow-hidden">
+          
+          <!-- SCANNING SCAN LINES AND GLOWS -->
+          <div class="absolute inset-x-0 h-0.5 bg-amber-500/60 shadow-[0_0_20px_#f59e0b] top-0 animate-[bounce_3s_infinite] hidden pointer-events-none" id="scanning-laser-line"></div>
+          
+          <!-- VIDEO TAG FOR WEB PORT -->
+          <video id="webcam" playsinline autoplay muted class="w-full h-full object-cover -scale-x-100 hidden"></video>
+          
+          <!-- CANVAS FOR TARGETING AND OVERLAYS -->
+          <canvas id="overlay" class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
+
+          <!-- CALIBRATING SCREEN LOADER -->
+          <div class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center text-center p-6 space-y-4" id="camera-loading-overlay">
+            <div id="loading-spinner" class="animate-spin rounded-full h-8 w-8 border-2 border-amber-500 border-t-transparent shrink-0"></div>
+            <div>
+              <p class="text-xs font-black uppercase tracking-widest text-slate-300" id="portal-init-text">Initializing Face-API Models</p>
+              <p class="text-[10px] text-slate-500 font-medium mt-1">Please wait while neural network weights load into local memory.</p>
+            </div>
+          </div>
+
+          <!-- LENS START OVERLAY -->
+          <div class="absolute inset-0 bg-slate-950/80 flex flex-col items-center justify-center text-center p-6 space-y-4 hidden" id="camera-gate-overlay">
+            <span class="text-2xl select-none">📷</span>
+            <div>
+              <p class="text-xs font-black uppercase tracking-widest text-white">Biometric Scanner Inactive</p>
+              <p class="text-[10px] text-slate-400 mt-1 max-w-xs mx-auto">Authorize browser webcam access and select calibrating options on the left to wake biometric terminal.</p>
+            </div>
+            <button id="activate-scan-btn" class="text-[10px] bg-amber-500 hover:bg-amber-600 text-slate-950 font-black uppercase tracking-widest px-5 py-2.5 rounded-lg transition shadow-lg">
+              Wake Lens Engine
+            </button>
+          </div>
+        </div>
+
+        <!-- LIVE RESULT BAR -->
+        <div class="w-full max-w-xl mt-4 bg-slate-950 p-4 rounded-xl border border-blue-900/20 text-center" id="scan-feedback-container">
+          <p class="text-[11px] font-mono-code text-slate-400" id="scanner-instruction">Choose calibration settings and launch camera lens.</p>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Import core scripts -->
+  <!-- attendance.js uses ES module imports for Firebase — load as a module -->
+  <script type="module" src="./attendance.js"></script>
+</body>
+</html>
